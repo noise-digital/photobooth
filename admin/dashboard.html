@@ -1,0 +1,39 @@
+<!doctype html><title>Dashboard Admin</title><meta name=viewport content="width=device-width,initial-scale=1"><link rel=stylesheet href="../assets/css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<main style="max-width:900px"><h2>Dashboard Admin</h2><div class=tabs id=tb></div><div id=v style="margin-top:16px"></div></main>
+<script type=module>
+import{$,base,CATS,getSettings,qr,sb,pub}from"../assets/js/app.js";
+const ok=r=>{if(r.error)throw r.error;return r.data};
+const all=async(t,o)=>ok(await sb.from(t).select("*").order(o||"created_at",{ascending:false}));
+const cnt=async t=>(await sb.from(t).select("*",{count:"exact",head:true})).count;
+const up=async(p,f,max)=>{if(f.size>max)throw Error("File terlalu besar");const{error}=await sb.storage.from("media").upload(p,f,{contentType:f.type,upsert:true});if(error)throw error;return pub(p)+"?v="+Date.now()};
+const rm=u=>u&&sb.storage.from("media").remove([decodeURIComponent(u.split("/media/")[1].split("?")[0])]);
+const T={Ringkasan:async()=>{const c=await Promise.all(["weddings","photos","audios"].map(cnt));return`<div class=grid><div class=card><h2>${c[0]}</h2>Wedding</div><div class=card><h2>${c[1]}</h2>Foto</div><div class=card><h2>${c[2]}</h2>Rekaman Suara</div></div>`},
+Wedding:async()=>{const l=await all("weddings");return`<div class=card style="cursor:auto"><input id=wi placeholder="ID/slug unik, mis. armanjaya"><input id=wg placeholder="Nama mempelai pria"><input id=wb placeholder="Nama mempelai wanita"><input id=wd type=date><label>Foto cover <input id=wc type=file accept="image/jpeg,image/png"></label><button class=btn id=ws>Simpan Wedding</button></div>
+${l.map(w=>`<div class=row><span><b>${w.id}</b> ${w.groom_name} & ${w.bride_name} (${w.status=="off"?"nonaktif":"aktif"})</span><span><button class="btn o" data-a=edit data-i=${w.id}>Edit</button><button class="btn o" data-a=tog data-i=${w.id}>On/Off</button><button class="btn o" data-a=qr data-i=${w.id}>QR</button><button class="btn o" data-a=delw data-i=${w.id}>Hapus</button></span></div>`).join("")}<div id=qb></div>`},
+Frame:async()=>{const l=await all("frames");return`<div class=card style="cursor:auto"><input id=fn placeholder="Nama desain"><select id=fc>${Object.entries(CATS).map(([k,v])=>`<option value=${k}>${v}</option>`).join("")}</select><input id=fw placeholder="ID wedding (kosongkan = semua wedding)"><textarea id=fs rows=4 placeholder="Satu slot per baris: x,y,lebar,tinggi (0-1). Contoh:&#10;0.1,0.1,0.8,0.4&#10;0.1,0.55,0.8,0.4"></textarea><label>PNG transparan <input id=ff type=file accept=image/png></label><button class=btn id=fsv>Upload Frame</button></div>
+${l.map(f=>`<div class=row><span><img src="${f.image_url}" width=40> ${f.name} (${f.category}, ${f.photo_slots} slot) ${f.status=="on"?"":"[nonaktif]"}</span><span><button class="btn o" data-a=ren data-i=${f.id}>Ganti Nama</button><button class="btn o" data-a=togf data-i=${f.id}>On/Off</button><button class="btn o" data-a=delf data-i=${f.id}>Hapus</button></span></div>`).join("")}`},
+Galeri:async()=>{const l=await all("photos");return`<div class=grid>${l.map(p=>`<div class=card style="cursor:auto"><img src="${p.image_url}" style="width:100%"><small>${p.wedding_id} · ${new Date(p.created_at).toLocaleString("id-ID")}</small>${p.audio_url?`<audio controls src="${p.audio_url}" style="width:100%"></audio>`:""}<br><a class="btn o" href="${p.image_url}" target=_blank download>Download</a><button class="btn o" data-a=delp data-i=${p.id}>Hapus</button></div>`).join("")}</div>`},
+Pengaturan:async()=>{const s=await getSettings();return`<div class=card style="cursor:auto"><label>Nama brand<input id=sb value="${s.brand}"></label><label>Durasi maks audio (detik)<input id=sa type=number value=${s.maxAudio}></label><label>Kualitas foto JPG (0.5-1)<input id=sq type=number step=.01 value=${s.quality}></label><button class=btn id=ss>Simpan</button></div>`}};
+let cur;const go=async k=>{$("#v").innerHTML="Memuat...";try{$("#v").innerHTML=await T[k]();cur=k}catch(e){$("#v").innerHTML="Error: "+e.message}};
+const{data:{session}}=await sb.auth.getSession();if(!session)location="login.html";
+else{const{data:a}=await sb.from("admins").select("user_id").eq("user_id",session.user.id).maybeSingle();
+ if(!a){alert("Akun ini bukan admin");await sb.auth.signOut();location="login.html"}
+ else{$("#tb").innerHTML=Object.keys(T).map(k=>`<button class="btn o" data-k=${k}>${k}</button>`).join("")+"<button class=btn id=lo>Keluar</button>";go("Ringkasan")}}
+document.onclick=async e=>{const t=e.target,d=t.dataset;try{
+ if(d.k)go(d.k);if(t.id=="lo"){await sb.auth.signOut();location="login.html"}
+ if(t.id=="ws"){const id=$("#wi").value.trim();if(!/^[a-z0-9-]+$/.test(id))return alert("ID hanya huruf kecil, angka, strip");const o={id,groom_name:$("#wg").value,bride_name:$("#wb").value,wedding_date:$("#wd").value||null};
+  const f=$("#wc").files[0];if(f)o.cover_image=await up("covers/"+id+"/cover",f,5e6);ok(await sb.from("weddings").upsert(o));go("Wedding")}
+ if(d.a=="edit"){const{data:w}=await sb.from("weddings").select("*").eq("id",d.i).single();$("#wi").value=d.i;$("#wg").value=w.groom_name;$("#wb").value=w.bride_name;$("#wd").value=w.wedding_date||"";scrollTo(0,0)}
+ if(d.a=="tog"||d.a=="togf"){const c=d.a=="tog"?"weddings":"frames",{data:s}=await sb.from(c).select("status").eq("id",d.i).single();ok(await sb.from(c).update({status:s.status=="off"?"on":"off"}).eq("id",d.i));go(cur)}
+ if(d.a=="qr"){const u=qr(base+"wedding.html?w="+d.i);$("#qb").innerHTML=`<img src=${u}><br><a class=btn download="qr-${d.i}.png" href=${u}>Download QR PNG</a><p>${base}wedding.html?w=${d.i}</p>`}
+ if(d.a=="delw"&&confirm("Hapus wedding?")){ok(await sb.from("weddings").delete().eq("id",d.i));go("Wedding")}
+ if(d.a=="ren"){const n=prompt("Nama baru");if(n){ok(await sb.from("frames").update({name:n}).eq("id",d.i));go("Frame")}}
+ if(d.a=="delf"&&confirm("Hapus frame?")){const{data:f}=await sb.from("frames").select("image_url").eq("id",d.i).single();await rm(f.image_url);ok(await sb.from("frames").delete().eq("id",d.i));go("Frame")}
+ if(d.a=="delp"&&confirm("Hapus foto?")){const{data:p}=await sb.from("photos").select("*").eq("id",d.i).single();await rm(p.image_url);await rm(p.audio_url);await sb.from("audios").delete().eq("photo_id",d.i);ok(await sb.from("photos").delete().eq("id",d.i));go("Galeri")}
+ if(t.id=="fsv"){const f=$("#ff").files[0],sl=$("#fs").value.trim().split("\n").map(r=>{const[x,y,w,h]=r.split(",").map(Number);return{x,y,w,h}});if(!f||!$("#fn").value||sl.some(s=>[s.x,s.y,s.w,s.h].some(isNaN)))return alert("Lengkapi nama, file PNG, dan slot");
+  const im=await createImageBitmap(f),id=crypto.randomUUID(),image_url=await up("frames/"+id+".png",f,3e6);
+  ok(await sb.from("frames").insert({id,wedding_id:$("#fw").value.trim(),name:$("#fn").value,category:$("#fc").value,image_url,photo_slots:sl.length,slot_coordinates:sl,width:im.width,height:im.height}));go("Frame")}
+ if(t.id=="ss"){ok(await sb.from("settings").upsert({id:"app",brand:$("#sb").value,max_audio:+$("#sa").value,quality:+$("#sq").value}));alert("Tersimpan")}
+}catch(x){alert("Error: "+(x.message||x))}};
+</script>

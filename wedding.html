@@ -1,0 +1,7 @@
+<!doctype html><title>Photobooth</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,500&family=Poppins:wght@400;600&display=swap" rel=stylesheet><link rel=stylesheet href="assets/css/style.css">
+<body class=hero><main id=m>Memuat...</main>
+<script type=module>
+import{$,P,fdate,getWedding}from"./assets/js/app.js";
+const w=await getWedding(P.get("w"));
+$("#m").innerHTML=w?`${w.coverImage?'<img class=cover src="'+w.coverImage+'">':""}<p>The Wedding of</p><h1>${w.groomName} &amp; ${w.brideName}</h1><p>${fdate(w.weddingDate)}</p><a class=btn href="frames.html?w=${w.id}">MULAI PHOTOBOOTH</a>`:"<h2>Wedding tidak ditemukan / nonaktif</h2>";
+</script>

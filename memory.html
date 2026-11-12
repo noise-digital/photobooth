@@ -1,0 +1,7 @@
+<!doctype html><title>Kenangan</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,500&family=Poppins:wght@400;600&display=swap" rel=stylesheet><link rel=stylesheet href="assets/css/style.css">
+<main id=m>Memuat...</main>
+<script type=module>
+import{$,P,sb}from"./assets/js/app.js";
+const{data}=await sb.rpc("get_photo",{pid:P.get("p")});const p=data&&data[0];
+$("#m").innerHTML=p?`<h2>Kenangan Pernikahan</h2><img src="${p.image_url}" style="width:100%">${p.audio_url?'<h3>Pesan Suara</h3><audio controls src="'+p.audio_url+'"></audio>':""}<br><a class=btn href="${p.image_url}" download>Download</a>`:"<h2>Kenangan tidak ditemukan</h2>";
+</script>

@@ -1,0 +1,6 @@
+<!doctype html><title>Login Admin</title><meta name=viewport content="width=device-width,initial-scale=1"><link rel=stylesheet href="../assets/css/style.css">
+<main><h2>Login Admin</h2><input id=e type=email placeholder=Email><input id=p type=password placeholder=Password><button class=btn id=b>Masuk</button></main>
+<script type=module>
+import{sb}from"../supabase/supabase-config.js";
+b.onclick=async()=>{const{error}=await sb.auth.signInWithPassword({email:e.value,password:p.value});error?alert("Login gagal: "+error.message):location="dashboard.html"};
+</script>

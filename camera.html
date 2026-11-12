@@ -1,0 +1,19 @@
+<!doctype html><title>Kamera</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,500&family=Poppins:wght@400;600&display=swap" rel=stylesheet><link rel=stylesheet href="assets/css/style.css">
+<main><h3>Ambil Foto <span id=n></span></h3><div class=box><video id=v autoplay playsinline muted></video><div id=cd></div></div>
+<button class=btn id=sh>📸 Ambil</button><button class="btn o" id=sw>🔄 Ganti Kamera</button><div class=th id=th></div><button class=btn id=nx disabled>Lanjut</button></main><div id=fl></div>
+<script type=module>
+import{$,P,getFrame}from"./assets/js/app.js";
+const f=await getFrame(P.get("f")),N=f.slots.length,ph=Array(N).fill(null);let face="user",s,sel=-1;
+async function start(){s&&s.getTracks().forEach(t=>t.stop());try{s=await navigator.mediaDevices.getUserMedia({video:{facingMode:face,width:{ideal:1280}},audio:false});v.srcObject=s;v.style.transform=face=="user"?"scaleX(-1)":""}catch(e){alert("Kamera tidak bisa diakses. Izinkan kamera dan gunakan HTTPS.")}}
+$("#sw").onclick=()=>{face=face=="user"?"environment":"user";start()};
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+$("#sh").onclick=async()=>{$("#sh").disabled=1;for(let i=3;i>0;i--){$("#cd").textContent=i;await wait(1000)}$("#cd").textContent="";
+ const fl=$("#fl");fl.style.opacity=1;setTimeout(()=>fl.style.opacity=0,150);
+ const k=Math.min(1,1280/v.videoWidth),c=document.createElement("canvas");c.width=v.videoWidth*k;c.height=v.videoHeight*k;const x=c.getContext("2d");if(face=="user"){x.translate(c.width,0);x.scale(-1,1)}x.drawImage(v,0,0,c.width,c.height);
+ const i=sel>=0?sel:ph.indexOf(null);if(i>=0)ph[i]=c.toDataURL("image/jpeg",.9);sel=-1;draw();$("#sh").disabled=0};
+function draw(){$("#th").innerHTML=ph.map((p,i)=>`<div>${p?'<img src="'+p+'" width=90>':"Slot "+(i+1)}<br><button class="btn o" data-r=${i}>Ulang</button><button class="btn o" data-d=${i}>Hapus</button></div>`).join("");
+ $("#n").textContent=ph.filter(Boolean).length+"/"+N;$("#nx").disabled=ph.includes(null)}
+$("#th").onclick=e=>{const d=e.target.dataset;if(d.r!==undefined)sel=+d.r;if(d.d!==undefined)ph[+d.d]=null;draw()};
+$("#nx").onclick=()=>{sessionStorage.ph=JSON.stringify(ph);location="result.html?w="+P.get("w")+"&f="+f.id};
+draw();start();
+</script>

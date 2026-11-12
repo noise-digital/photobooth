@@ -1,0 +1,32 @@
+<!doctype html><title>Hasil</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,500&family=Poppins:wght@400;600&display=swap" rel=stylesheet><link rel=stylesheet href="assets/css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<main><h3>Hasil Foto</h3><canvas id=cv style="width:100%"></canvas><p>Zoom foto <input type=range id=z min=1 max=2 step=.05 value=1></p>
+<div id=ed><h3>Pesan Suara untuk Pengantin (opsional)</h3><button class=btn id=rec>🎙 Rekam</button><button class="btn o" id=stop>⏹ Stop</button><button class="btn o" id=del>Hapus</button> <span id=tm></span><br><audio id=pl controls hidden></audio><br>
+<button class=btn id=save>💾 Simpan & Dapatkan QR</button><a class="btn o" href="camera.html">Foto Ulang</a></div>
+<div id=ac hidden><a class=btn id=dj>Download JPG</a><a class=btn id=dp>Download PNG</a><button class=btn id=wa>WhatsApp</button><button class=btn id=ig>Instagram</button><button class=btn id=tt>TikTok</button><button class="btn o" id=cp>Salin Link Kenangan</button><br><img id=q width=200><br><a class="btn o" id=dq download=qr-kenangan.png>Download QR</a><br><a class="btn o" id=bk>Kembali ke Photobooth</a></div></main>
+<script type=module>
+import{$,P,base,sb,pub,getFrame,getWedding,compose,getSettings,qr}from"./assets/js/app.js";
+const w=await getWedding(P.get("w")),f=await getFrame(P.get("f")),ph=JSON.parse(sessionStorage.ph||"[]"),S=await getSettings();
+let z=1,cv,au,dur=0,tm,rec;const cv_=$("#cv");
+async function draw(){cv=await compose(f,ph,w,z);cv_.width=cv.width;cv_.height=cv.height;cv_.getContext("2d").drawImage(cv,0,0)}
+$("#z").oninput=e=>{z=+e.target.value;draw()};draw();
+$("#rec").onclick=async()=>{try{const s=await navigator.mediaDevices.getUserMedia({audio:true}),ch=[];rec=new MediaRecorder(s);rec.ondataavailable=e=>ch.push(e.data);
+ rec.onstop=()=>{s.getTracks().forEach(t=>t.stop());clearInterval(tm);au=new Blob(ch,{type:rec.mimeType});$("#pl").src=URL.createObjectURL(au);$("#pl").hidden=false};
+ rec.start();dur=0;tm=setInterval(()=>{$("#tm").textContent=++dur+"/"+S.maxAudio+" dtk";if(dur>=S.maxAudio)rec.stop()},1000)}catch(e){alert("Izin mikrofon ditolak")}};
+$("#stop").onclick=()=>rec&&rec.state=="recording"&&rec.stop();
+$("#del").onclick=()=>{au=null;$("#pl").hidden=true;$("#tm").textContent=""};
+const put=async(p,b,t)=>{const{error}=await sb.storage.from("media").upload(p,b,{contentType:t});if(error)throw error;return pub(p)};
+$("#save").onclick=async()=>{const b=$("#save");b.disabled=1;b.textContent="Menyimpan...";try{
+ const id=crypto.randomUUID(),blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",S.quality));
+ const imageUrl=await put("photos/"+w.id+"/"+id+".jpg",blob,"image/jpeg");let audioUrl="";
+ if(au){audioUrl=await put("audio/"+w.id+"/"+id+(au.type.includes("mp4")?".m4a":".webm"),au,au.type.split(";")[0]);
+  const{error}=await sb.from("audios").insert({wedding_id:w.id,photo_id:id,audio_url:audioUrl,duration:dur});if(error)throw error}
+ const{error}=await sb.from("photos").insert({id,wedding_id:w.id,frame_id:f.id,image_url:imageUrl,audio_url:audioUrl});if(error)throw error;
+ const link=base+"memory.html?p="+id,png=await new Promise(r=>cv.toBlob(r,"image/png")),jf=new File([blob],"wedding-photo.jpg",{type:"image/jpeg"});
+ $("#dj").href=URL.createObjectURL(blob);$("#dj").download="wedding-photo.jpg";$("#dp").href=URL.createObjectURL(png);$("#dp").download="wedding-photo.png";
+ const sh=async()=>{try{if(navigator.canShare&&navigator.canShare({files:[jf]}))await navigator.share({files:[jf],text:"Kenangan: "+link});else if(navigator.share)await navigator.share({text:"Kenangan pernikahan",url:link});else{$("#dj").click();alert("Foto diunduh. Buka aplikasinya lalu unggah dari galeri.")}}catch(e){}};
+ $("#wa").onclick=()=>open("https://wa.me/?text="+encodeURIComponent("Kenangan pernikahan: "+link));$("#ig").onclick=sh;$("#tt").onclick=sh;
+ $("#cp").onclick=async()=>{await navigator.clipboard.writeText(link);alert("Link disalin")};
+ const u=qr(link);$("#q").src=u;$("#dq").href=u;$("#bk").href="wedding.html?w="+w.id;$("#ed").hidden=true;$("#ac").hidden=false;
+ }catch(e){alert("Gagal menyimpan: "+(e.message||e));b.disabled=0;b.textContent="💾 Simpan & Dapatkan QR"}};
+</script>

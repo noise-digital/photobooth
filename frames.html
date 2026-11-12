@@ -1,0 +1,12 @@
+<!doctype html><title>Pilih Frame</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,500&family=Poppins:wght@400;600&display=swap" rel=stylesheet><link rel=stylesheet href="assets/css/style.css">
+<main><h2>Pilih Frame</h2><div class=tabs id=t></div><div class=grid id=g></div></main>
+<div id=pv hidden style="position:fixed;inset:0;background:#fffe;padding:20px;overflow:auto"><canvas id=pc style="max-height:70vh"></canvas><br><button class=btn id=ok>Pakai Frame Ini</button><button class="btn o" onclick="pv.hidden=true">Tutup</button></div>
+<script type=module>
+import{$,P,CATS,getWedding,listFrames,compose}from"./assets/js/app.js";
+const w=await getWedding(P.get("w"));if(!w)location="index.html";
+const all=await listFrames(w.id);let cat="strip";
+$("#t").innerHTML=Object.entries(CATS).map(([k,v])=>`<button class="btn o" data-k=${k}>${v}</button>`).join("");
+$("#t").onclick=e=>{if(e.target.dataset.k){cat=e.target.dataset.k;show()}};
+async function show(){const g=$("#g");g.innerHTML="";for(const f of all.filter(f=>f.cat===cat)){const d=document.createElement("div");d.className="card";const c=await compose(f,[],w);d.append(c,f.name);d.onclick=()=>{const b=$("#pc");b.width=c.width;b.height=c.height;b.getContext("2d").drawImage(c,0,0);$("#pv").hidden=false;$("#ok").onclick=()=>location="camera.html?w="+w.id+"&f="+f.id};g.append(d)}}
+show();
+</script>
